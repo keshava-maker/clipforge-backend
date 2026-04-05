@@ -18,6 +18,22 @@ WORK_DIR = Path(tempfile.gettempdir()) / "clipforge"
 WORK_DIR.mkdir(exist_ok=True)
 BLIP_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large"
 
+# ── Keep-alive: ping self every 14 mins so Render never sleeps ──
+@app.on_event("startup")
+async def start_keepalive():
+    asyncio.create_task(keepalive_loop())
+
+async def keepalive_loop():
+    await asyncio.sleep(60)  # wait 1 min after startup
+    while True:
+        try:
+            port = os.environ.get("PORT", "8000")
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.get(f"http://localhost:{port}/")
+        except Exception:
+            pass
+        await asyncio.sleep(14 * 60)  # ping every 14 minutes
+
 
 @app.get("/")
 def health():
